@@ -7,6 +7,15 @@ from torch_geometric.data.data import Data
 from torch_geometric.data import DataLoader
 from collide_detection import check_collision
 
+def normalize_state(x):
+    max_x = torch.max(x,0)[0][0]
+    max_y = torch.max(x,0)[0][1]
+    min_x = torch.min(x,0)[0][0]
+    min_y = torch.min(x,0)[0][1]
+    x[:,0] = 2*(x[:,0] - min_x)/(max_x - min_x)-1
+    x[:,1] = 2*(x[:,1] - min_y)/(max_y - min_y)-1
+    return x
+
 class GCN(torch.nn.Module):
     def __init__(self, n_features, n_outputs, hidden_channels):
         super(GCN, self).__init__()
@@ -34,17 +43,22 @@ triangle2 = [(100, 150), (350, 150), (300, 250)]
 aabb_size= (200,250)
 def play():
     state = torch.tensor([[100,100],[200,100],[150,200],[100,150],[350,150],[300,250]],dtype = torch.float)
+
     edge_index = torch.tensor([[0,1,2,3,4,3],
                                [1,2,0,4,5,5]],dtype = torch.long)
-    data = Data(x=state, edge_index=edge_index)
+    #将数据投射到[-1,1]之间
+    normalized = normalize_state(state)   
+
+    data = Data(x=normalized, edge_index=edge_index)
     action = model(data.x, data.edge_index)
     next_state = state + action
-    triangle_1 = state[0:3]
-    triangle_2 = state[3:6]
+    triangle_1 = next_state[0:3]
+    triangle_2 = next_state[3:6]
     if check_collision(triangle_1, triangle_2):
         reward = -1
     else:
         reward = 1
+    print(next_state)
     return state ,action ,next_state, reward 
 
 
