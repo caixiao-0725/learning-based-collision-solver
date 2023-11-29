@@ -48,17 +48,18 @@ def play():
                                [1,2,0,4,5,5]],dtype = torch.long)
     #将数据投射到[-1,1]之间
     normalized = normalize_state(state)   
-
+    print(normalized)
     data = Data(x=normalized, edge_index=edge_index)
     action = model(data.x, data.edge_index)
     next_state = state + action
     triangle_1 = next_state[0:3]
     triangle_2 = next_state[3:6]
     if check_collision(triangle_1, triangle_2):
-        reward = -1
+        reward = -10
     else:
-        reward = 1
-    print(next_state)
+        reward = 10
+
+    #print(next_state)
     return state ,action ,next_state, reward 
 
 
