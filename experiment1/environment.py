@@ -9,6 +9,10 @@ from torch_geometric.data import Data, Batch
 
 import random
 
+trained = False
+save = True
+TRAIN = True
+
 class MyWrappr:
     def __init__(self):
         self.state = torch.tensor([[-1.0000, -1.0000], 
@@ -45,7 +49,7 @@ class MyWrappr:
 
         #限制最大步数    
         self.step_n += 1
-        if self.step_n >= 10 and over == False:
+        if self.step_n >= 5 and over == False:
             over = True
             reward = 0
         
@@ -108,25 +112,28 @@ class GCN_scalar(torch.nn.Module):
     
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-model_action = GCN(2, 2, 32)
-model_action_delay = GCN(2, 2, 32)
-model_action_delay.load_state_dict(model_action.state_dict())
 
-model_value1 = GCN_scalar(2, 32)
-model_value1_delay = GCN_scalar(2, 32)
-model_value1_delay.load_state_dict(model_value1.state_dict())
 
-model_value2 = GCN_scalar(2, 32)
-model_value2_delay = GCN_scalar(2, 32)
-model_value2_delay.load_state_dict(model_value2.state_dict())
-
-if 0:
+if trained:
     model_action = torch.load('data/test1/model_action.pt')
     model_value1 = torch.load('data/test1/model_value1.pt')
     model_value2 = torch.load('data/test1/model_value2.pt')
     model_action_delay = torch.load('data/test1/model_action_delay.pt')
     model_value1_delay = torch.load('data/test1/model_value1_delay.pt')
     model_value2_delay = torch.load('data/test1/model_value2_delay.pt')
+else:
+    model_action = GCN(2, 2, 32)
+    model_action_delay = GCN(2, 2, 32)
+    model_action_delay.load_state_dict(model_action.state_dict())
+
+    model_value1 = GCN_scalar(2, 32)
+    model_value1_delay = GCN_scalar(2, 32)
+    model_value1_delay.load_state_dict(model_value1.state_dict())
+
+    model_value2 = GCN_scalar(2, 32)
+    model_value2_delay = GCN_scalar(2, 32)
+    model_value2_delay.load_state_dict(model_value2.state_dict())
+
 #model_action.to(device)
 #model_action_delay.to(device)
 #model_value1.to(device)
@@ -143,8 +150,7 @@ def play(show=False):
     over = False
     while not over:
         with torch.no_grad():
-            action = model_action(state, env.edge_index)
-            #print(action)
+            action = model_action(state, env.edge_index)+(torch.randn(6,2)-0.5)*0.1
             next_state, reward, over = env.step(action)
         data.append((state, action, reward, next_state, over))
         reward_sum += reward
@@ -191,8 +197,8 @@ class Pool:
 
 
 pool = Pool()
-pool.update()
-state, action, reward, next_state, over = pool.sample()
+#pool.update()
+#state, action, reward, next_state, over = pool.sample()
 #print(state, reward.shape, pool[0])
 
 #####################################################################################
@@ -312,11 +318,15 @@ def train():
             print(epoch, len(pool), test_result)
 
 if __name__ == '__main__':
-    train()
-    torch.save(model_action, 'data/test1/model_action.pt')
-    torch.save(model_value1, 'data/test1/model_value1.pt')
-    torch.save(model_value2, 'data/test1/model_value2.pt')
-    torch.save(model_action, 'data/test1/model_action_delay.pt')
-    torch.save(model_value1, 'data/test1/model_value1_delay.pt')
-    torch.save(model_value2, 'data/test1/model_value2_delay.pt')
-    play(True)[-1]
+    
+    if TRAIN:
+        train()
+    if save:
+        torch.save(model_action, 'data/test1/model_action.pt')
+        torch.save(model_value1, 'data/test1/model_value1.pt')
+        torch.save(model_value2, 'data/test1/model_value2.pt')
+        torch.save(model_action, 'data/test1/model_action_delay.pt')
+        torch.save(model_value1, 'data/test1/model_value1_delay.pt')
+        torch.save(model_value2, 'data/test1/model_value2_delay.pt')
+
+    print(play(True)[-1])
