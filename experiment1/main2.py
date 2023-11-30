@@ -8,10 +8,13 @@ from torch_geometric.nn import GCNConv, GraphConv, GATConv, GatedGraphConv, LECo
 from torch_geometric.data import Data, Batch
 
 import random
+ID = '2'
 
-trained = False
-save = True
-TRAIN = True
+load = False
+save = False
+TRAIN = False
+
+MaxStep = 0.5
 
 class MyWrappr:
     def __init__(self):
@@ -37,23 +40,24 @@ class MyWrappr:
         return self.state
 
     def step(self,action):
+        self.step_n += 1
         self.state = self.state + action
         triangle_1 = self.state[0:3]
         triangle_2 = self.state[3:6]
         if check_collision(triangle_1, triangle_2):
-            reward = 0
+            reward = 0.0
             over = False
         else:
-            reward = 1
+            reward = 6.0-self.step_n
             over = True
 
         #限制最大步数    
-        self.step_n += 1
+        
         if self.step_n >= 5 and over == False:
             over = True
-            reward = 0
+            reward = 0.0
         
-        reward -= action.square().sum()
+        #reward -= action.square().sum()
 
         return self.state, reward, over
 
@@ -90,6 +94,7 @@ class GCN(torch.nn.Module):
         x = self.conv3(x, edge_index)
         x = x.relu()
         x = self.linear1(x)
+        x = MaxStep*torch.tanh(x)
         return x
     
 class GCN_scalar(torch.nn.Module):
@@ -114,13 +119,14 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 
 
-if trained:
-    model_action = torch.load('data/test1/model_action.pt')
-    model_value1 = torch.load('data/test1/model_value1.pt')
-    model_value2 = torch.load('data/test1/model_value2.pt')
-    model_action_delay = torch.load('data/test1/model_action_delay.pt')
-    model_value1_delay = torch.load('data/test1/model_value1_delay.pt')
-    model_value2_delay = torch.load('data/test1/model_value2_delay.pt')
+if load:
+    model_action = torch.load('data/test'+ID+'/model_action.pt')
+    model_value1 = torch.load('data/test'+ID+'/model_value1.pt')
+    model_value2 = torch.load('data/test'+ID+'/model_value2.pt')
+    model_action_delay = torch.load('data/test'+ID+'/model_action_delay.pt')
+    model_value1_delay = torch.load('data/test'+ID+'/model_value1_delay.pt')
+    model_value2_delay = torch.load('data/test'+ID+'/model_value2_delay.pt')
+
 else:
     model_action = GCN(2, 2, 32)
     model_action_delay = GCN(2, 2, 32)
@@ -133,6 +139,21 @@ else:
     model_value2 = GCN_scalar(2, 32)
     model_value2_delay = GCN_scalar(2, 32)
     model_value2_delay.load_state_dict(model_value2.state_dict())
+
+optimizer_action = torch.optim.Adam(model_action.parameters(), lr=5e-4)
+optimizer_value1 = torch.optim.Adam(model_value1.parameters(), lr=5e-3)
+optimizer_value2 = torch.optim.Adam(model_value2.parameters(), lr=5e-3)
+
+if load:
+    optimizer_action_load = torch.load('data/test'+ID+'/optimizer_action.pt')
+    optimizer_value1_load = torch.load('data/test'+ID+'/optimizer_value1.pt')
+    optimizer_value2_load = torch.load('data/test'+ID+'/optimizer_value2.pt')
+
+    optimizer_action.load_state_dict(optimizer_action_load.state_dict())
+    optimizer_value1.load_state_dict(optimizer_value1_load.state_dict())
+    optimizer_value2.load_state_dict(optimizer_value2_load.state_dict())
+
+
 
 #model_action.to(device)
 #model_action_delay.to(device)
@@ -150,7 +171,7 @@ def play(show=False):
     over = False
     while not over:
         with torch.no_grad():
-            action = model_action(state, env.edge_index)+(torch.randn(6,2)-0.5)*0.1
+            action = model_action(state, env.edge_index)+(torch.rand(6,2)-0.5)*0.1
             next_state, reward, over = env.step(action)
         data.append((state, action, reward, next_state, over))
         reward_sum += reward
@@ -202,10 +223,6 @@ pool = Pool()
 #print(state, reward.shape, pool[0])
 
 #####################################################################################
-
-optimizer_action = torch.optim.Adam(model_action.parameters(), lr=5e-4)
-optimizer_value1 = torch.optim.Adam(model_value1.parameters(), lr=5e-3)
-optimizer_value2 = torch.optim.Adam(model_value2.parameters(), lr=5e-3)
 
 
 def soft_update(_from, _to):
@@ -290,7 +307,7 @@ def train():
     model_value2.train()
 
     #共更新N轮数据
-    for epoch in range(200):
+    for epoch in range(20*4):
         pool.update()
 
         #每次更新数据后,训练N次
@@ -315,18 +332,20 @@ def train():
 
         if epoch % 20 == 0:
             test_result = sum([play()[-1] for _ in range(20)]) / 20
-            print(epoch, len(pool), test_result)
+            print(int(epoch/20), test_result)
 
 if __name__ == '__main__':
     
     if TRAIN:
         train()
     if save:
-        torch.save(model_action, 'data/test1/model_action.pt')
-        torch.save(model_value1, 'data/test1/model_value1.pt')
-        torch.save(model_value2, 'data/test1/model_value2.pt')
-        torch.save(model_action, 'data/test1/model_action_delay.pt')
-        torch.save(model_value1, 'data/test1/model_value1_delay.pt')
-        torch.save(model_value2, 'data/test1/model_value2_delay.pt')
-
+        torch.save(model_action, 'data/test'+ID+'/model_action.pt')
+        torch.save(model_value1, 'data/test'+ID+'/model_value1.pt')
+        torch.save(model_value2, 'data/test'+ID+'/model_value2.pt')
+        torch.save(model_action, 'data/test'+ID+'/model_action_delay.pt')
+        torch.save(model_value1, 'data/test'+ID+'/model_value1_delay.pt')
+        torch.save(model_value2, 'data/test'+ID+'/model_value2_delay.pt')
+        torch.save(optimizer_action, 'data/test'+ID+'/optimizer_action.pt')
+        torch.save(optimizer_value1, 'data/test'+ID+'/optimizer_value1.pt')
+        torch.save(optimizer_value2, 'data/test'+ID+'/optimizer_value2.pt')
     print(play(True)[-1])
