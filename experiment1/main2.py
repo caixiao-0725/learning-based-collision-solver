@@ -10,7 +10,7 @@ from torch_geometric.data import Data, Batch
 import random
 ID = '2'
 
-load = False
+load = True
 save = False
 TRAIN = False
 
@@ -168,6 +168,8 @@ def play(show=False):
     data = []
     reward_sum = 0
     state = env.reset()
+    if show:
+        env.show()
     over = False
     while not over:
         with torch.no_grad():

@@ -3,7 +3,10 @@
 目标：给定两个固定位置的已经相交的三角形，尝试在一定的步长内把它俩分开
 
 两种想法：1.给每个action一个最大的移动距离，这个可以用softmax实现  main2.py
+         
          2.在reward函数里面加入action的模长，来限制action的大小   main1.py
+
+main3.py  尝试减小main2.py中的maxstep
 
 在使用方法2的时候，前面几个训练epoch会产生非常小的reward，-1e9的数量级都有，输出action以后发现，action非常大，尝试多训练一会儿看看能不能work。
 
@@ -22,6 +25,7 @@ q2:三个点直接聚拢在一个点了！咋整?
 
 q3:也许我应该只记录赢的时候的数据，输的时候的数据是否具有指导意义？
 
+使用Self-imitation learning
 
 
 ##吐槽
@@ -37,3 +41,4 @@ DONE
 
 ##结果
 main2.py已经可以做到将两个三角形一步分开了，不过我会在main3.py里面逐步缩小max step size
+
