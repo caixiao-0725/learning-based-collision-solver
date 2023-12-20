@@ -200,7 +200,7 @@ class Pool:
     def update(self):
         #每次更新不少于N条新数据
         old_len = len(self.pool)
-        while len(pool) - old_len < 200:
+        while len(self.pool) - old_len < 200:
             self.pool.extend(play()[0])
 
         #只保留最新的N条数据
